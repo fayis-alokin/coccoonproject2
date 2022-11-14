@@ -320,7 +320,7 @@ async def get_allsocial(request):
     print(content)
     return JSONResponse({'data':content})
 
-def soc(request,id):
+def socm(request,id):
     content=data_table.query(social).filter(social.basic_details_id==id).all()
     content=[{k:v for k, v in vars(social).items() if k!='_sa_instance_state'} for social in content]
     return content
@@ -338,13 +338,13 @@ def adr(request,id):
     content=[{k:v for k, v in vars(details).items() if k!='_sa_instance_state'} for details in content]
     return content
 
-def edu(request,id):
+def educ(request,id):
     content=data_table.query(education).filter(education.basic_details_id==id).all()
     content=[{k:v for k, v in vars(education).items() if k!='_sa_instance_state'} for education in content]
     content=[{k:str(v) if k=='passing_year' else v for k,v in cont.items()} for cont in content]
     return content
 
-def exp(request,id):
+def expr(request,id):
     content=data_table.query(experience).filter(experience.basic_details_id==id).all()
     content=[{k:v for k, v in vars(experience).items() if k!='_sa_instance_state'} for experience in content]
     content=[{k:str(v) if k in['start_date','end_date'] else v for k,v in cont.items()} for cont in content]
@@ -366,10 +366,10 @@ async def get_individual_resume(request):
     if request.method == "GET":
          get_primary=prim(request,id)
          get_address=adr(request,id)
-         get_education=edu(request,id)
-         get_experience=exp(request,id)
+         get_education=educ(request,id)
+         get_experience=expr(request,id)
          get_skill=skl(request,id)
-         get_social=soc(request,id)
+         get_social=socm(request,id)
          get_project=pro(request,id)
 
          print()
@@ -386,7 +386,6 @@ async def get_individual_resume(request):
             })
     if request.method == "PUT":
         id = request.path_params.get('person_id')
-
         update_data = await request.json()
         primary = update_data.pop("prim")
         addres = update_data.pop("adrs")
@@ -402,46 +401,128 @@ async def get_individual_resume(request):
                 primary_details_db.update(pr,synchronize_session=False)
                 data_table.commit()
             for ad in addres:
-                address_details_db = data_table.query(address).filter((address.basic_details_id == id) & (address.address_id == ad['address_id']))
-                address_details_db.update(ad,synchronize_session=False)
-                data_table.commit()
-            for ed in educationn:
-                education_details_db = data_table.query(education).filter((education.basic_details_id == id) & (education.education_id == ed['education_id']))
-                education_details_db.update(ed,synchronize_session=False)
-                data_table.commit()
-            for ex in expe:
-                experience_details_db = data_table.query(experience).filter((experience.basic_details_id == id) & (experience.experience_id == ex['experience_id']))
-                experience_details_db.update(ex,synchronize_session=False)
-                data_table.commit()
-            for pr in project:
-                project_details_db = data_table.query(projects).filter((projects.basic_details_id == id) & (projects.project_id == pr['project_id']))
-                project_details_db.update(pr,synchronize_session=False)
-                data_table.commit()
-            for sk in skill:
-                print(sk['skill_id'])
-                if not sk['skill_id']:
-                    print(True)
-                    sk['basic_details_id'] = id
-                    new_skill = skills(**sk)
-                    
-                    data_table.add(new_skill)
+                if "address_id" in ad.keys():
+                    address_details_db = data_table.query(address).filter((address.basic_details_id == id) & (address.address_id == ad['address_id']))
+                    address_details_db.update(ad,synchronize_session=False)
                     data_table.commit()
-
                 else:
+                    print("add")
+                    ad['basic_details_id'] = id
+                    new_address = address(**ad)
+                    data_table.add(new_address)
+                    data_table.commit()
+                    house_name = [ sub['House_name'] for sub in addres]
+                    house_name_db = data_table.query(address.House_name).filter((address.basic_details_id == id).all())
+                    house_name_from_table = [lis[0] for lis in house_name_db]
+                    for name in house_name_from_table:
+                        if name not in house_name:
+                            data_table.query(address).filter(address.House_name == name).delete()
+                            data_table.commit()
+            for ed in educationn:
+                if "education_id" in ed.keys():
+                    education_details_db = data_table.query(education).filter((education.basic_details_id == id) & (education.education_id == ed['education_id']))
+                    education_details_db.update(ed,synchronize_session=False)
+                    data_table.commit()
+                else:
+                    print("add")
+                    ed['basic_details_id'] = id
+                    new_education = education(**ed)
+                    data_table.add(new_education)
+                    data_table.commit()
+                    qualification = [ sub['Qualification'] for sub in educationn]
+                    qualification_db = data_table.query(education.Qualification).filter((education.basic_details_id == id).all())
+                    qualification_from_table = [lis[0] for lis in qualification_db]
+                    for q in qualification_from_table:
+                        if q not in qualification:
+                            delete_data = data_table.query(education).filter(education.Qualification == q)
+                            delete_data.delete()
+                            data_table.commit()
+
+            for ex in expe:
+                if 'experience_id' in ex.keys():
+                    experience_details_db = data_table.query(experience).filter((experience.basic_details_id == id) & (experience.experience_id == ex['experience_id']))
+                    experience_details_db.update(ex,synchronize_session=False)
+                    data_table.commit()
+                else:
+                    print("add")
+                    ex['basic_details_id'] = id
+                    new_experience = experience(**ex)
+                    data_table.add(new_experience)
+                    data_table.commit()
+                    roles = [ sub['role'] for sub in expe]
+                    role_db = data_table.query(experience.role).filter((experience.basic_details_id == id).all())
+                    role_from_table = [ lis[0] for lis in role_db]
+                    for e in role_from_table:
+                        if e not in roles:
+                            delete_data = data_table.query(experience).filter(experience.role == e)
+                            delete_data.delete()
+                            data_table.commit()
+
+            for pr in project:
+                if 'project_id' in pr.keys():
+                    project_details_db = data_table.query(projects).filter((projects.basic_details_id == id) & (projects.project_id == pr['project_id']))
+                    project_details_db.update(pr,synchronize_session=False)
+                    data_table.commit()
+                else:
+                    print("add")
+                    pr['basic_details_id'] = id
+                    new_project = projects(**pr)
+                    data_table.add(new_project)
+                    data_table.commit()
+                    proj = [ sub['project_title'] for sub in project]
+                    proj_db = data_table.query(projects.project_title).filter((projects.basic_details_id == id).all())
+                    proje_from_table = [ lis[0] for lis in proj_db]
+                    for p in proje_from_table:
+                        if p not in proj:
+                            delete_data = data_table.query(projects).filter(projects.project_title == p)
+                            delete_data.delete()
+                            data_table.commit()
+                    
+            for sk in skill:
+                if 'skill_id' in sk.keys():
                     skill_details_db = data_table.query(skills).filter((skills.basic_details_id == id) & (skills.skill_id == sk['skill_id']))
                     skill_details_db.update(sk,synchronize_session=False)
                     data_table.commit()
-                    
-               
+                else:
+                    print("Add")
+                    sk['basic_details_id'] = id
+                    new_skill = skills(**sk)
+                    data_table.add(new_skill)
+                    data_table.commit()
+                    ski = [ sub['skill_name'] for sub in skill]
+                    skill_db = data_table.query(skills.skill_name).filter((skills.basic_details_id == id).all())
+                    skill_from_table = [ lis[0] for lis in skill_db]
+                    for s in skill_from_table:
+                        if s not in ski:
+                            delete_skl = data_table.query(skills).filter(skills.skill_name == s)
+                            delete_skl.delete()
+                            data_table.commit()
             for sm in social_media:
-                social_media_db = data_table.query(social).filter((social.basic_details_id == id) & (social.social_id == sm['social_id']))
-                social_media_db.update(sm,synchronize_session=False)
-                data_table.commit()
+                if 'social_id' in sm.keys():
+                    social_media_db = data_table.query(social).filter((social.basic_details_id == id) & (social.social_id == sm['social_id']))
+                    social_media_db.update(sm,synchronize_session=False)
+                    data_table.commit()
+                else:
+                    sm['basic_details_id'] = id
+                    new_social = social(**sm)
+                    data_table.add(new_social)
+                    data_table.commit
+                    smedia = [ sub['platform'] for sub in social_media]
+                    social_db = data_table.query(social.platform).filter((social.basic_details_id == id).all())
+                    social_from_table = [lis[0] for lis in social_db]
+                    for som in social_from_table:
+                        if som not in smedia:
+                            delete_social = data_table.query(social).filter(social.platform == som)
+                            delete_social.delete()
+                            data_table.commit()
 
         except Exception as e:
-                print(e)
+                print("error",e)
     return JSONResponse({"data":"edited successfully"})
 
+    
+   
+    
     
   
 async def new_resume(request):
@@ -542,16 +623,6 @@ async def search(request:Request):
     content=[{k:str(v) if k == 'date_applied' else v for k,v in cont.items() } for cont in content]
 
     return JSONResponse({'data':content},status_code=200)
-
-
-    
-
-
-
-
-
-
-
 
 routes=[
     Route('/create_primary_details',endpoint=create_primary_details,methods=["GET","POST"]),
